@@ -16,7 +16,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
   font-family:ui-rounded,"Hiragino Maru Gothic ProN","Hiragino Sans",system-ui,sans-serif}
-#buddy{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px 16px;
+#buddy{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px 16px 26px;
   background:radial-gradient(90% 70% at 50% 100%,var(--bg2),var(--bg) 70%)}
 #bubble{position:relative;max-width:280px;width:100%;background:var(--bubble);border:1px solid var(--line);border-radius:14px;
   padding:9px 12px;font-size:15px;line-height:1.55;min-height:46px;text-align:center;word-break:break-all}
@@ -62,7 +62,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
 <script>
 (async () => {
 'use strict';
-const $ = id => document.getElementById(id);
+// the page can move into a Picture-in-Picture window: look elements up in whichever document holds them now
+let doc = document;
+const $ = id => doc.getElementById(id);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const [SPR, LINES] = await Promise.all(['/sprites/manifest.json', '/lines.json'].map(async u => (await fetch(u)).json()));
 const images = new Map();
@@ -215,8 +217,8 @@ if ('documentPictureInPicture' in window) {
     try { w = await documentPictureInPicture.requestWindow({ width: 260, height: 380 }); }
     catch { return; }   // e.g. embedded browsers without a window manager
     [...document.styleSheets].forEach(ss => { try { const st = w.document.createElement('style'); st.textContent = [...ss.cssRules].map(r => r.cssText).join(''); w.document.head.append(st); } catch {} });
-    const box = $('buddy'); w.document.body.append(box); $('pip').hidden = true;
-    w.addEventListener('pagehide', () => { document.body.append(box); $('pip').hidden = false; });
+    const box = $('buddy'); w.document.body.append(box); doc = w.document; $('pip').hidden = true;
+    w.addEventListener('pagehide', () => { document.body.append(box); doc = document; $('pip').hidden = false; });
   });
 }
 })();
