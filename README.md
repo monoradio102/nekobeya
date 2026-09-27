@@ -4,6 +4,50 @@
 
 <sub>紹介動画（高画質・27秒）: [X の投稿](https://x.com/monoradio102/status/2104227635870228928) ／ 画面の一部: Wikipedia（CC BY-SA 4.0）</sub>
 
+[日本語](#日本語) ・ [English](#english)
+
+## 日本語
+
+Claude Code の作業のようすを、ねこみみのドット絵の女の子「みかん」が小窓で見せてくれるプラグインです。
+
+作業を頼むと「どれどれ…」とのぞきこみ、あやしいコードになやみ、テストの結果をいのり、落ちたら泣いて、終わったらごほうびのラーメンをすすります。セリフは Claude 本人が、その場の気持ちやグチをみかんの言葉でしゃべります。小窓には時計、作業の経過時間、進捗も出ます。
+
+Chrome / Edge では小窓を最前面に浮かべられる（ピクチャインピクチャ）ので、ブラウジングしながら横目で作業のようすがわかります。
+
+すべて手元のパソコンの中で動きます（小さなローカル MCP サーバーと `http://localhost:8767` のページだけ）。会話の内容やセリフがどこかに送られることはありません。
+
+### 入れ方
+
+Claude Code で:
+
+```
+/plugin marketplace add monoradio102/nekobeya
+/plugin install nekobeya@nekobeya
+```
+
+Claude Code を再起動して `/nekobeya:open` を実行すると小窓が開きます（`http://localhost:8767` を直接開いても OK）。「小窓にする」ボタンで最前面に浮かびます。Node.js 18 以上が必要です。
+
+更新するときは、先にマーケットプレイスを読み直してから更新し、再起動します:
+
+```
+claude plugin marketplace update nekobeya
+claude plugin update nekobeya@nekobeya
+```
+
+### 設定（環境変数）
+
+- `NEKOBEYA_PORT`: 小窓のポート（既定 8767）
+- `NEKOBEYA_HOME`: 状態ファイルの置き場所（既定 `~/.nekobeya`）
+- `NEKOBEYA_QUIET=1`: 自動で動く指示を外し、頼んだときだけ動くようにする
+
+作業が5分止まると「ひとだんらく？」とくつろぎ、30分で眠ります。複数の Claude Code セッションで同じ小窓を共有します。
+
+### ライセンス
+
+コードは MIT です。みかん（絵、セリフ集、キャラクターデザイン）は著作権を保持しており、このプラグインの一部としてそのまま使う場合に限り利用できます（[LICENSE](LICENSE)）。みかんは AI で生成したキャラクターです。
+
+## English
+
 みかん, a small cat-eared pixel-art girl, keeps you company next to Claude Code. She acts out what Claude is doing and
 how it feels about it: 「どれどれ…」 when a task begins, pondering over puzzling code, praying while tests run, crying at
 a failing build, slurping noodles when it is done. The window also shows the clock, the elapsed time and the progress.
