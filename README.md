@@ -17,6 +17,14 @@ anywhere, so Claude can speak freely in her voice.
 Restart Claude Code, then run `/nekobeya:open` (or open http://localhost:8767 yourself). In Chrome or Edge, the
 「小窓にする」 button keeps her floating above your other windows. Requires Node.js 18 or newer.
 
+To update, refresh the marketplace first (Claude Code does not re-read it on its own unless auto-update is on
+for it), then restart:
+
+```
+claude plugin marketplace update nekobeya
+claude plugin update nekobeya@nekobeya
+```
+
 ## How it works
 
 | part | what it does |
