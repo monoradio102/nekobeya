@@ -17,7 +17,8 @@ export async function writeJson(f, v) {
 }
 
 // the task she is keeping an eye on: what, since when, how far. An empty line lets the window pick one from her bank.
-export async function update({ action, line, task, progress, phase }) {
+// `by: "hook"` marks moves Claude Code made on its own, so the hooks can tell them from Claude's.
+export async function update({ action, line, task, progress, phase, by }) {
   const now = Date.now();
   let cur = await readJson("task.json");
   phase ??= progress != null || task ? (cur && !cur.doneAt ? "update" : "start") : undefined;
@@ -29,6 +30,6 @@ export async function update({ action, line, task, progress, phase }) {
     cur.updatedAt = now;   // the window treats a long silence as "probably finished" (the model may forget "done")
     await writeJson("task.json", cur);
   }
-  await writeJson("activity.json", { action, line: String(line ?? "").slice(0, 80), phase: phase ?? null, at: now });
+  await writeJson("activity.json", { action, line: String(line ?? "").slice(0, 80), phase: phase ?? null, at: now, by });
   return cur;
 }

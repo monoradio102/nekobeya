@@ -40,7 +40,7 @@ claude plugin update nekobeya@nekobeya
 - `NEKOBEYA_HOME`: 状態ファイルの置き場所（既定 `~/.nekobeya`）
 - `NEKOBEYA_QUIET=1`: 自動で動く指示を外し、頼んだときだけ動くようにする
 
-Claude がみかんを呼び忘れても、許可の確認待ちではノックし、テストやビルドが落ちたら泣き、返事が終わったら開いたままの作業を「おわった」にします（プラグインの hook）。
+Claude がみかんを呼び忘れても（呼ぶ前でも）、プラグインの hook で動きます。話しかけるとすぐのぞきこみ、テストやビルドの実行中はいのって、通ったらピース、落ちたら泣きます。許可の確認待ちではノックし、会話の整理（コンパクト）ではおそうじ、返事が終わったら開いたままの作業を「おわった」にします。セリフは Claude が言ったときが優先です。
 
 作業が5分止まると「ひとだんらく？」とくつろぎ、30分で眠ります。複数の Claude Code セッションで同じ小窓を共有します。
 
@@ -81,7 +81,7 @@ claude plugin update nekobeya@nekobeya
 |---|---|
 | `server.mjs` | MCP server (stdio, no dependencies) with one tool, `mikan`: `action`, `line`, optional `task` / `progress` / `phase`. Also serves the window. |
 | `hooks/session-start.mjs` | adds the "when to call her" instructions to each session, so no CLAUDE.md entry is needed |
-| `hooks/events.mjs` | moves her at moments Claude Code knows about, even if Claude forgets to call her: knocks on an approval prompt, cries when a test or build command fails, and closes a task left open when the reply ends |
+| `hooks/events.mjs` | moves her at moments Claude Code knows about, even before or without Claude calling her: peeks in when you send a message, prays while a test or build runs and cheers or cries at the result, knocks on an approval prompt, tidies up on compaction, and closes a task left open when the reply ends. Claude's own call from the last few seconds wins. |
 | `state.mjs` | the shared state in `~/.nekobeya/`, used by the server and the hooks |
 | `commands/open.md` | `/nekobeya:open` opens the window |
 | `buddy/` | the window page and her own line bank (used when a call has no line) |

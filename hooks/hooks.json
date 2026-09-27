@@ -1,25 +1,46 @@
 {
-  "description": "Tells Claude to let みかん act out its work (the instructions a project would otherwise put in CLAUDE.md), and moves her at moments Claude Code knows about: approval prompts, failing tests or builds, the reply being finished",
+  "description": "Tells Claude to let みかん act out its work (the instructions a project would otherwise put in CLAUDE.md), and moves her at moments Claude Code knows about: a new message, tests or builds running, approval prompts, the reply being finished",
   "hooks": {
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.mjs\"" }] }
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.mjs\"" }] },
+      { "matcher": "startup",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "^Bash$",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
     ],
     "PostToolUse": [
-      { "matcher": "mcp__.*nekobeya.*__mikan",
+      { "matcher": "^Bash$|mcp__.*nekobeya.*__mikan",
         "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
+    ],
+    "PostToolUseFailure": [
+      { "matcher": "^Bash$",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
+    ],
+    "PermissionDenied": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
     ],
     "Notification": [
       { "matcher": "permission_prompt|elicitation_dialog",
         "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
     ],
-    "PostToolUseFailure": [
-      { "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
+    "SubagentStart": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
+    ],
+    "PreCompact": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
     ],
     "StopFailure": [
       { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
     ],
     "Stop": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
+    ],
+    "SessionEnd": [
       { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
     ]
   }
