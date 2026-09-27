@@ -25,7 +25,7 @@ Claude Code で:
 /plugin install nekobeya@nekobeya
 ```
 
-Claude Code を再起動して `/nekobeya:open` を実行すると小窓が開きます（`http://localhost:8767` を直接開いても OK）。「小窓にする」ボタンで最前面に浮かびます。Node.js 18 以上が必要です。
+Claude Code を再起動して `/nekobeya:open` を実行すると小窓が開きます（`http://localhost:8767` を直接開いても OK）。「小窓にする」ボタンで最前面に浮かびます。Node.js 18 以上が必要です。Claude Code は 2.1.92 で動作を確かめています。それより古いと、一部の hook（API エラー、許可の拒否、サブエージェントなど）が使えない場合があります。
 
 更新するときは、先にマーケットプレイスを読み直してから更新し、再起動します:
 
@@ -65,7 +65,8 @@ anywhere, so Claude can speak freely in her voice.
 ```
 
 Restart Claude Code, then run `/nekobeya:open` (or open http://localhost:8767 yourself). In Chrome or Edge, the
-「小窓にする」 button keeps her floating above your other windows. Requires Node.js 18 or newer.
+「小窓にする」 button keeps her floating above your other windows. Requires Node.js 18 or newer. Tested with Claude
+Code 2.1.92; older versions may lack some of the hook events it uses (API errors, denied permissions, subagents).
 
 To update, refresh the marketplace first (Claude Code does not re-read it on its own unless auto-update is on
 for it), then restart:
