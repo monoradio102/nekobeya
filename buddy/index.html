@@ -16,14 +16,19 @@
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
   font-family:ui-rounded,"Hiragino Maru Gothic ProN","Hiragino Sans",system-ui,sans-serif}
-#buddy{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px 16px 26px;
+#buddy{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px 16px 8px;overflow:hidden;
   background:radial-gradient(90% 70% at 50% 100%,var(--bg2),var(--bg) 70%)}
+/* only the stage shrinks in a small window; everything else keeps its size */
+#buddy>*{flex-shrink:0}
 #bubble{position:relative;max-width:280px;width:100%;background:var(--bubble);border:1px solid var(--line);border-radius:14px;
-  padding:9px 12px;font-size:15px;line-height:1.55;min-height:46px;text-align:center;word-break:break-all}
+  padding:9px 12px;font-size:15px;line-height:1.55;text-align:center;
+  /* room for two lines, so a wrapped line neither overflows nor makes the page jump; wrap at phrase boundaries */
+  min-height:calc(2lh + 18px);display:flex;align-items:center;justify-content:center;word-break:auto-phrase;text-wrap:balance;overflow-wrap:anywhere}
 #bubble::after{content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;margin-left:-6px;background:var(--bubble);
   border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg)}
 #stage{cursor:pointer;border-radius:12px}
-#cv{width:min(220px,60vw);height:min(220px,60vw);image-rendering:pixelated;display:block}
+#stage{flex-shrink:1;min-height:0}
+#cv{--s:max(110px,min(220px,60vw,100vh - 270px));width:var(--s);height:var(--s);image-rendering:pixelated;display:block}
 #status{font-size:12px;color:var(--soft);letter-spacing:.06em;display:flex;align-items:center;gap:6px}
 #status i{width:8px;height:8px;border-radius:50%;background:var(--soft);display:inline-block}
 #status[data-s="error"] i{background:var(--err)}
@@ -43,7 +48,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
 #pct{font-variant-numeric:tabular-nums;min-width:3em;text-align:right}
 #pip{font:inherit;font-size:11px;color:var(--soft);background:transparent;border:1px solid var(--line);border-radius:999px;padding:3px 12px;cursor:pointer}
 #pip:hover{color:var(--ink)}
-#notice{position:fixed;bottom:6px;left:0;right:0;text-align:center;font-size:10px;color:var(--soft);opacity:.7;pointer-events:none}
+@media (max-height:460px){ #buddy{gap:6px;padding-top:8px} #clock{font-size:22px} }
+#notice{text-align:center;font-size:10px;color:var(--soft);opacity:.7;pointer-events:none}
 </style>
 </head>
 <body>
@@ -214,7 +220,7 @@ if ('documentPictureInPicture' in window) {
   $('pip').hidden = false;
   $('pip').addEventListener('click', async () => {
     let w;
-    try { w = await documentPictureInPicture.requestWindow({ width: 260, height: 380 }); }
+    try { w = await documentPictureInPicture.requestWindow({ width: 260, height: 440 }); }
     catch { return; }   // e.g. embedded browsers without a window manager
     [...document.styleSheets].forEach(ss => { try { const st = w.document.createElement('style'); st.textContent = [...ss.cssRules].map(r => r.cssText).join(''); w.document.head.append(st); } catch {} });
     const box = $('buddy'); w.document.body.append(box); doc = w.document; $('pip').hidden = true;

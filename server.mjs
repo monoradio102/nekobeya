@@ -16,7 +16,7 @@ const DATA = process.env.NEKOBEYA_HOME || path.join(os.homedir(), ".nekobeya");
 const PORT = Number(process.env.NEKOBEYA_PORT) || 8767;
 const URL_ = `http://localhost:${PORT}`;
 const NAME = "みかん";
-const VERSION = "0.4.1";
+const VERSION = "0.4.2";
 
 const ACTIONS = [
   "idle", "pc", "focus", "read", "think", "idea", "wait", "pray", "music", "eat", "smug", "peace", "tehepero",
