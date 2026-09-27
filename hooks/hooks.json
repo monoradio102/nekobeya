@@ -1,8 +1,26 @@
 {
-  "description": "Tells Claude to let みかん act out its work (the instructions a project would otherwise put in CLAUDE.md)",
+  "description": "Tells Claude to let みかん act out its work (the instructions a project would otherwise put in CLAUDE.md), and moves her at moments Claude Code knows about: approval prompts, failing tests or builds, the reply being finished",
   "hooks": {
     "SessionStart": [
       { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.mjs\"" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "mcp__.*nekobeya.*__mikan",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
+    ],
+    "Notification": [
+      { "matcher": "permission_prompt|elicitation_dialog",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
+    ],
+    "PostToolUseFailure": [
+      { "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
+    ],
+    "StopFailure": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
     ]
   }
 }

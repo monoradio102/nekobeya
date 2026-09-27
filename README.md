@@ -40,6 +40,8 @@ claude plugin update nekobeya@nekobeya
 - `NEKOBEYA_HOME`: 状態ファイルの置き場所（既定 `~/.nekobeya`）
 - `NEKOBEYA_QUIET=1`: 自動で動く指示を外し、頼んだときだけ動くようにする
 
+Claude がみかんを呼び忘れても、許可の確認待ちではノックし、テストやビルドが落ちたら泣き、返事が終わったら開いたままの作業を「おわった」にします（プラグインの hook）。
+
 作業が5分止まると「ひとだんらく？」とくつろぎ、30分で眠ります。複数の Claude Code セッションで同じ小窓を共有します。
 
 ### ライセンス
@@ -79,6 +81,8 @@ claude plugin update nekobeya@nekobeya
 |---|---|
 | `server.mjs` | MCP server (stdio, no dependencies) with one tool, `mikan`: `action`, `line`, optional `task` / `progress` / `phase`. Also serves the window. |
 | `hooks/session-start.mjs` | adds the "when to call her" instructions to each session, so no CLAUDE.md entry is needed |
+| `hooks/events.mjs` | moves her at moments Claude Code knows about, even if Claude forgets to call her: knocks on an approval prompt, cries when a test or build command fails, and closes a task left open when the reply ends |
+| `state.mjs` | the shared state in `~/.nekobeya/`, used by the server and the hooks |
 | `commands/open.md` | `/nekobeya:open` opens the window |
 | `buddy/` | the window page and her own line bank (used when a call has no line) |
 | `sprites/` | 28 animations (160 px frames, drawn at 2x) |

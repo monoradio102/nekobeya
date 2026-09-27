@@ -1,6 +1,6 @@
 {
   "name": "nekobeya",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "みかん, a small cat-eared pixel-art girl in a buddy window next to Claude Code, acts out Claude's work: curious at the start, puzzled, grumbling at failing tests, relieved when it works. Shows the clock, elapsed time and progress. Everything stays on your machine.",
   "keywords": [
     "companion",
