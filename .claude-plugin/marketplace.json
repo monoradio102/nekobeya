@@ -1,0 +1,17 @@
+{
+  "name": "nekobeya",
+  "owner": {
+    "name": "monoradio102"
+  },
+  "plugins": [
+    {
+      "name": "nekobeya",
+      "description": "みかん acts out Claude's work in a small always-visible window (local, nothing leaves your machine)",
+      "source": "./",
+      "category": "fun"
+    }
+  ],
+  "metadata": {
+    "description": "みかん (ねこべや): a buddy window that shows what Claude Code is doing"
+  }
+}

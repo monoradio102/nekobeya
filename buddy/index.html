@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>みかん</title>
+<style>
+:root{
+  --bg:#fbf1e6; --bg2:#f1d8c2; --ink:#4a3226; --soft:#8a6a58; --bubble:#fffaf4; --line:#e6c9b0;
+  --bar:#f0a060; --energy:#8aa6e8; --err:#d9607a;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#261c24; --bg2:#382733; --ink:#f7e8dc; --soft:#c7ab9b; --bubble:#3b2e37; --line:#5a4450;
+}}
+:root[data-theme="dark"]{ --bg:#261c24; --bg2:#382733; --ink:#f7e8dc; --soft:#c7ab9b; --bubble:#3b2e37; --line:#5a4450; }
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:ui-rounded,"Hiragino Maru Gothic ProN","Hiragino Sans",system-ui,sans-serif}
+#buddy{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px 16px;
+  background:radial-gradient(90% 70% at 50% 100%,var(--bg2),var(--bg) 70%)}
+#bubble{position:relative;max-width:280px;width:100%;background:var(--bubble);border:1px solid var(--line);border-radius:14px;
+  padding:9px 12px;font-size:15px;line-height:1.55;min-height:46px;text-align:center;word-break:break-all}
+#bubble::after{content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;margin-left:-6px;background:var(--bubble);
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg)}
+#stage{cursor:pointer;border-radius:12px}
+#cv{width:min(220px,60vw);height:min(220px,60vw);image-rendering:pixelated;display:block}
+#status{font-size:12px;color:var(--soft);letter-spacing:.06em;display:flex;align-items:center;gap:6px}
+#status i{width:8px;height:8px;border-radius:50%;background:var(--soft);display:inline-block}
+#status[data-s="error"] i{background:var(--err)}
+#status[data-s="running"] i,#status[data-s="working"] i{background:var(--energy)}
+#status[data-s="done"] i{background:var(--food)}
+#clock{font-size:28px;font-weight:600;letter-spacing:.06em;font-variant-numeric:tabular-nums;color:var(--ink)}
+#task{width:100%;max-width:280px;display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--soft)}
+#task[hidden]{display:none}
+#taskRow{display:flex;gap:8px}
+#taskTitle{color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+#elapsed{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
+#barRow{display:flex;align-items:center;gap:8px}
+#bar{flex:1;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+#bar b{display:block;height:100%;width:0;background:var(--bar);border-radius:3px;transition:width .8s}
+#bar.unknown b{width:30%;animation:slide 1.6s ease-in-out infinite}
+@keyframes slide{0%{margin-left:-30%}100%{margin-left:100%}}
+#pct{font-variant-numeric:tabular-nums;min-width:3em;text-align:right}
+#pip{font:inherit;font-size:11px;color:var(--soft);background:transparent;border:1px solid var(--line);border-radius:999px;padding:3px 12px;cursor:pointer}
+#pip:hover{color:var(--ink)}
+#notice{position:fixed;bottom:6px;left:0;right:0;text-align:center;font-size:10px;color:var(--soft);opacity:.7;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="buddy">
+  <div id="clock"></div>
+  <div id="bubble" aria-live="polite">…</div>
+  <div id="stage" role="button" tabindex="0" aria-label="なでる"><canvas id="cv" width="320" height="320"></canvas></div>
+  <div id="status" data-s="idle"><i></i><span id="label">のんびり</span></div>
+  <div id="task" hidden>
+    <div id="taskRow"><span id="taskTitle"></span><span id="elapsed"></span></div>
+    <div id="barRow"><div id="bar"><b></b></div><span id="pct"></span></div>
+  </div>
+  <button id="pip" hidden>小窓にする</button>
+  <div id="notice">AIで生成したキャラクターです</div>
+</div>
+<script>
+(async () => {
+'use strict';
+const $ = id => document.getElementById(id);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const [SPR, LINES] = await Promise.all(['/sprites/manifest.json', '/lines.json'].map(async u => (await fetch(u)).json()));
+const images = new Map();
+const img = name => {
+  if (!images.has(name)) images.set(name, new Promise(res => { const i = new Image(); i.onload = () => res(i); i.src = `/sprites/${name}.webp`; }));
+  return images.get(name);
+};
+const loaded = new Map();
+const use = async n => { if (SPR[n] && !loaded.has(n)) loaded.set(n, await img(n)); };
+
+// her moods when nobody is talking to her. "rest" phases follow "done" over time.
+const MOODS = {
+  idle:    { anims: () => timeIdle(), label: 'のんびり',
+             lines: ['ぼー…', 'なにかする？', 'ふぁ…', 'いつでもよんでね'] },
+  working: { anims: ['pc', 'think'], label: 'みてるところ', lines: ['どれどれ…', 'ふむふむ', 'みてみるね'] },
+  running: { anims: ['pc', 'pray'], label: 'じっこう中', lines: ['カタカタ…', 'うごかしてみるね', 'どうかな…'] },
+  error:   { anims: ['cry', 'scared'], label: 'エラー', lines: ['うぅ…エラーだ…', 'ひゃっ、こけた…', 'だいじょうぶ、なおすから…'] },
+  waiting: { anims: ['knock', 'peek'], label: 'かくにん待ち', lines: ['ねえねえ、かくにんして〜', 'これ、いい？', 'まってるね'] },
+  done:    { anims: ['eat', 'cocoa'], label: 'おわった', lines: ['おわった〜！ココアでひとやすみ', 'できたよ〜', 'ふぅ、いっぷく…'] },
+  rest:    { anims: ['lieback', 'prone_idle', 'music', 'cocoa'], label: 'きゅうけい', lines: ['ごろーん', 'つかれた〜', 'ちょっとやすむね'] },
+  settled: { anims: ['lieback', 'cocoa'], label: 'ひとだんらく？', lines: ['ひとだんらく…かな？', 'しずかになったね', 'おわったのかな〜'] },
+  sleep:   { anims: ['sleep'], label: 'すやすや', lines: ['すぴー…', 'むにゃ…'] },
+};
+// actions Claude can pick via the MCP tools -> animation
+const ACTION_ANIM = { idle: 'idle', pc: 'pc', focus: 'focus', read: 'read', think: 'think', idea: 'idea', wait: 'wait',
+  pray: 'pray', music: 'music', eat: 'eat', smug: 'smug', peace: 'peace', tehepero: 'tehepero', cry: 'cry', scared: 'scared',
+  knock: 'knock', wipe: 'wipe', face: 'face', peek: 'peek', cocoa: 'cocoa', lieback: 'lieback', nod: 'nod', sleep: 'sleep',
+  taunt: 'taunt', hide: 'scared', cheer: 'peace', nap: 'nod', yawn: 'nod', poke: 'think', game: 'music', lie: 'lieback', pout: 'taunt' };
+const ACTION_LABEL = { idle: 'のんびり', pc: 'さぎょう中', focus: 'しゅうちゅう', read: 'よんでる', think: 'かんがえ中', idea: 'ひらめいた',
+  wait: 'まってる', pray: 'おいのり中', music: 'まってる', eat: 'おわった', smug: 'どやっ', peace: 'やった！', tehepero: 'てへぺろ',
+  cry: 'しっぱい…', scared: 'こわい…', knock: 'よんでる', wipe: 'ふきふき', face: 'じー', peek: 'ひょこっ', cocoa: 'ひとやすみ',
+  lieback: 'ごろーん', nod: 'うとうと', sleep: 'すやすや', taunt: 'べー' };
+// what "idle" looks like at this hour
+function timeIdle() {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 10) return ['idle', 'cocoa'];
+  if (h >= 18 && h < 22) return ['music', 'read', 'cocoa', 'idle'];
+  if (h >= 22 || h < 5) return ['nod', 'lieback', 'prone_idle'];
+  return ['idle', 'prone_idle', 'read'];
+}
+const TALK = { idle: 'talk', prone_idle: 'prone_talk' };
+const PAT = { idle: 'pat', prone_idle: 'pat' };
+
+let mood = '', anim = 'peek', t0 = performance.now(), over = null, typing = 0, lastClaude = 0;
+function say(text) {
+  clearInterval(typing);
+  let i = 0; $('bubble').textContent = '';
+  typing = setInterval(() => { $('bubble').textContent = text.slice(0, ++i); if (i >= text.length) clearInterval(typing); }, 55);
+  if (TALK[anim]) { use(TALK[anim]); over = { anim: TALK[anim], until: performance.now() + text.length * 55 + 600 }; }
+}
+async function setMood(m) {
+  if (m === mood) return;
+  mood = m;
+  const d = MOODS[m];
+  anim = pick((typeof d.anims === 'function' ? d.anims() : d.anims).filter(a => SPR[a]));
+  await use(anim);
+  t0 = performance.now();
+  $('status').dataset.s = m; $('label').textContent = d.label;
+  say(pick(d.lines));
+}
+
+// ---------- poll the state written by the MCP server (~/.nekobeya/) ----------
+// Only the MCP tools change the state (no hooks). Long silence = she assumes the work
+// settled down: after 5 min the elapsed time stops and she lazes around, after 30 min she falls asleep.
+const QUIET_MS = 5 * 60_000, SLEEP_MS = 30 * 60_000;
+async function poll() {
+  try {
+    const s = await (await fetch('/state', { cache: 'no-store' })).json();
+    task = s.task; skew = s.now - Date.now();
+    const a = s.activity || null;
+    const age = a ? s.now - a.at : Infinity;
+    if (a && age < QUIET_MS) {
+      if (a.at !== lastClaude) {
+        lastClaude = a.at; mood = 'claude';
+        anim = SPR[ACTION_ANIM[a.action]] ? ACTION_ANIM[a.action] : 'idle';
+        await use(anim); t0 = performance.now();
+        $('status').dataset.s = a.action === 'hide' ? 'error' : a.action === 'cocoa' ? 'done' : 'working';
+        $('label').textContent = ACTION_LABEL[a.action] ?? 'みかん';
+        say(a.line || pick(a.phase === 'start' ? LINES._start : a.phase === 'done' ? LINES._done : LINES[anim] ?? LINES.idle));
+      }
+      return;
+    }
+    setMood(age < SLEEP_MS ? (task && !task.doneAt ? 'settled' : 'rest') : a ? 'sleep' : 'idle');
+  } catch { /* server not reachable: keep the last state */ }
+}
+setInterval(poll, 1000); poll();
+
+// ---------- clock, elapsed, progress ----------
+let task = null, skew = 0;
+const two = n => String(n).padStart(2, '0');
+const fmt = ms => { const m = Math.floor(ms / 60000), h = Math.floor(m / 60); return h ? `${h}時間${two(m % 60)}分` : `${m}分${two(Math.floor(ms / 1000) % 60)}秒`; };
+function tick() {
+  const d = new Date();
+  $('clock').textContent = `${two(d.getHours())}:${two(d.getMinutes())}`;
+  // hide a finished task after 10 minutes
+  const show = task && !(task.doneAt && Date.now() + skew - task.doneAt > 10 * 60_000);
+  $('task').hidden = !show;
+  if (!show) return;
+  $('taskTitle').textContent = task.title || (task.doneAt ? 'おわった' : 'みてるところ');
+  const quiet = !task.doneAt && task.updatedAt && Date.now() + skew - task.updatedAt > QUIET_MS;
+  const end = task.doneAt ?? (quiet ? task.updatedAt : Date.now() + skew);
+  $('elapsed').textContent = (task.doneAt || quiet ? 'かかった時間 ' : 'けいか ') + fmt(end - task.startedAt);
+  const known = task.progress != null;
+  $('bar').classList.toggle('unknown', !known && !task.doneAt && !quiet);
+  $('bar').firstElementChild.style.width = known ? task.progress + '%' : (task.doneAt ? '100%' : '');
+  $('pct').textContent = known ? task.progress + '%' : '';
+}
+setInterval(tick, 1000); tick();
+// idle moods drift to another pose every so often
+setInterval(() => { if (mood === 'idle' || mood === 'rest') { const m = mood; mood = ''; setMood(m); } }, 45_000);
+
+// ---------- draw ----------
+const cv = $('cv'), ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const hearts = [];
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (over && now > over.until) over = null;
+  const name = over && loaded.has(over.anim) ? over.anim : anim;
+  const sp = SPR[name], im = loaded.get(name);
+  ctx.clearRect(0, 0, 320, 320);
+  if (!sp?.close) { ctx.fillStyle = 'rgba(90,50,30,.14)'; ctx.beginPath(); ctx.ellipse(160, 302, 100, 13, 0, 0, 7); ctx.fill(); }
+  if (sp && im) {
+    // 160 px frames drawn 2x on the 320 px canvas; close-ups fill the stage
+    const f = Math.floor((now - (over ? 0 : t0)) / sp.ms) % sp.n, s = sp.close ? 320 / sp.fw : 2 * (sp.k || 1);
+    const dx = sp.close ? 0 : Math.round(160 - sp.cx * s), dy = sp.close ? Math.round(320 - sp.fh * s) : Math.round(306 - sp.foot * s);
+    ctx.drawImage(im, (f % sp.cols) * sp.fw, Math.floor(f / sp.cols) * sp.fh, sp.fw, sp.fh, dx, dy, Math.round(sp.fw * s), Math.round(sp.fh * s));
+  }
+  for (let i = hearts.length - 1; i >= 0; i--) {
+    const h = hearts[i]; h.y += h.vy; h.life -= 0.02;
+    if (h.life <= 0) { hearts.splice(i, 1); continue; }
+    ctx.globalAlpha = h.life; ctx.fillStyle = '#ff7d9c'; ctx.font = '28px sans-serif'; ctx.fillText('♥', h.x, h.y); ctx.globalAlpha = 1;
+  }
+}
+requestAnimationFrame(frame);
+
+async function pat() {
+  for (let i = 0; i < 5; i++) hearts.push({ x: 120 + Math.random() * 80, y: 130 + Math.random() * 40, vy: -1 - Math.random(), life: 1 });
+  if (PAT[anim]) { await use(PAT[anim]); over = { anim: PAT[anim], until: performance.now() + 3000 }; }
+  say(pick(mood === 'error' ? ['ありがと…がんばる', 'うぅ、なぐさめて〜'] : ['えへへ', 'なでなで、すき', 'にゃっ', 'もっと〜']));
+}
+$('stage').addEventListener('click', pat);
+$('stage').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pat(); } });
+
+// ---------- always-on-top window (Chrome / Edge Document Picture-in-Picture) ----------
+if ('documentPictureInPicture' in window) {
+  $('pip').hidden = false;
+  $('pip').addEventListener('click', async () => {
+    let w;
+    try { w = await documentPictureInPicture.requestWindow({ width: 260, height: 380 }); }
+    catch { return; }   // e.g. embedded browsers without a window manager
+    [...document.styleSheets].forEach(ss => { try { const st = w.document.createElement('style'); st.textContent = [...ss.cssRules].map(r => r.cssText).join(''); w.document.head.append(st); } catch {} });
+    const box = $('buddy'); w.document.body.append(box); $('pip').hidden = true;
+    w.addEventListener('pagehide', () => { document.body.append(box); $('pip').hidden = false; });
+  });
+}
+})();
+</script>
+</body>
+</html>

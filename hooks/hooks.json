@@ -1,0 +1,8 @@
+{
+  "description": "Tells Claude to let みかん act out its work (the instructions a project would otherwise put in CLAUDE.md)",
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.mjs\"" }] }
+    ]
+  }
+}
