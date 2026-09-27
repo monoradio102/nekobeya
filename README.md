@@ -1,5 +1,9 @@
 # ねこべや (Claude Code plugin)
 
+![みかんが小窓で Claude Code の作業のようすを見せている紹介動画](docs/promo.webp)
+
+<sub>紹介動画（高画質・27秒）: [X の投稿](https://x.com/monoradio102/status/2104227635870228928) ／ 画面の一部: Wikipedia（CC BY-SA 4.0）</sub>
+
 みかん, a small cat-eared pixel-art girl, keeps you company next to Claude Code. She acts out what Claude is doing and
 how it feels about it: 「どれどれ…」 when a task begins, pondering over puzzling code, praying while tests run, crying at
 a failing build, slurping noodles when it is done. The window also shows the clock, the elapsed time and the progress.
