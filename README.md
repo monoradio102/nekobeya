@@ -48,6 +48,16 @@ Claude がみかんを呼び忘れても（呼ぶ前でも）、プラグイン�
 
 コードは MIT です。みかん（絵、セリフ集、キャラクターデザイン）は著作権を保持しており、このプラグインの一部としてそのまま使う場合に限り利用できます（[LICENSE](LICENSE)）。みかんは AI で生成したキャラクターです。
 
+### クレジット
+
+みかんの絵とアニメーションは、生成 AI で作っています。
+
+- アニメーション（66 種類すべて）: [MiniMax H3](https://huggingface.co/MiniMaxAI/MiniMax-H3) で、1 枚の絵から作ったループ動画です（ComfyUI、4 ステップのターボ LoRA）。Powered by MiniMax H3.
+- 作業の場面 38 種類の元の絵: [Qwen-Image 2.1](https://huggingface.co/Qwen/Qwen-Image-2.1) に、みかん用に学習した LoRA を足して描きました。Built with Qwen.
+- 最初の 28 種類の元の絵: ChatGPT（OpenAI）と Google Gemini の画像生成で描きました。
+
+MiniMax H3 is licensed under the MiniMax H3 Community License Agreement, Copyright © 2026 MiniMax. All Rights Reserved.
+
 ## English
 
 みかん, a small cat-eared pixel-art girl, keeps you company next to Claude Code. She acts out what Claude is doing and
@@ -100,3 +110,15 @@ Settings (environment variables): `NEKOBEYA_PORT` (default 8767), `NEKOBEYA_HOME
 
 Code: MIT. The character みかん (sprites, line bank, design) is all rights reserved and may be used only as part
 of this plugin; see [LICENSE](LICENSE). みかん is an AI-generated character.
+
+## Credits
+
+みかん's pictures and animations are made with generative AI.
+
+- Animations (all 66): looping clips made from one still each with [MiniMax H3](https://huggingface.co/MiniMaxAI/MiniMax-H3)
+  (ComfyUI, 4-step turbo LoRA). Powered by MiniMax H3.
+- Stills of the 38 work scenes: [Qwen-Image 2.1](https://huggingface.co/Qwen/Qwen-Image-2.1) with a LoRA trained on みかん.
+  Built with Qwen.
+- Stills of the first 28: ChatGPT (OpenAI) and Google Gemini image generation.
+
+MiniMax H3 is licensed under the MiniMax H3 Community License Agreement, Copyright © 2026 MiniMax. All Rights Reserved.
