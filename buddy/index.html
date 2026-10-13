@@ -7,7 +7,7 @@
 <style>
 :root{
   --bg:#fbf1e6; --bg2:#f1d8c2; --ink:#4a3226; --soft:#8a6a58; --bubble:#fffaf4; --line:#e6c9b0;
-  --bar:#f0a060; --energy:#8aa6e8; --err:#d9607a;
+  --bar:#f0a060; --energy:#8aa6e8; --err:#d9607a; --food:#8cbf7a;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#261c24; --bg2:#382733; --ink:#f7e8dc; --soft:#c7ab9b; --bubble:#3b2e37; --line:#5a4450;
@@ -49,6 +49,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
 #pip{font:inherit;font-size:11px;color:var(--soft);background:transparent;border:1px solid var(--line);border-radius:999px;padding:3px 12px;cursor:pointer}
 #pip:hover{color:var(--ink)}
 @media (max-height:460px){ #buddy{gap:6px;padding-top:8px} #clock{font-size:22px} }
+/* a short window (e.g. the PiP window shrunk vertically) keeps only the line and her; she takes the freed space */
+@media (max-height:380px){
+  #clock,#status,#task,#pip,#notice{display:none}
+  /* the line shrinks with the window too; she fills the rest, using the full width, and the bubble overlaps
+     the empty headroom at the top of her canvas (standing poses leave ~15% of it empty) */
+  #buddy{padding:6px 8px 2px;--f:clamp(10px,4.2vh,15px);
+    --s:max(60px,min(320px,100vw - 16px,(100vh - var(--f) * 3.9 - 30px) / .88))}
+  #bubble{font-size:var(--f);padding:calc(var(--f) * .4) calc(var(--f) * .7);min-height:calc(2lh + var(--f) * .8);
+    z-index:1;margin-bottom:calc(var(--s) * -.12)}
+  #cv{--s:inherit}
+}
 #notice{text-align:center;font-size:10px;color:var(--soft);opacity:.7;pointer-events:none}
 </style>
 </head>
@@ -88,13 +99,13 @@ const MOODS = {
   working: { anims: ['pc', 'think'], label: 'みてるところ', lines: ['どれどれ…', 'ふむふむ', 'みてみるね'] },
   running: { anims: ['pc', 'pray'], label: 'じっこう中', lines: ['カタカタ…', 'うごかしてみるね', 'どうかな…'] },
   error:   { anims: ['cry', 'scared'], label: 'エラー', lines: ['うぅ…エラーだ…', 'ひゃっ、こけた…', 'だいじょうぶ、なおすから…'] },
-  waiting: { anims: ['knock', 'peek'], label: 'かくにん待ち', lines: ['ねえねえ、かくにんして〜', 'これ、いい？', 'まってるね'] },
-  done:    { anims: ['eat', 'cocoa'], label: 'おわった', lines: ['おわった〜！ココアでひとやすみ', 'できたよ〜', 'ふぅ、いっぷく…'] },
-  rest:    { anims: ['lieback', 'prone_idle', 'music', 'cocoa'], label: 'きゅうけい', lines: ['ごろーん', 'つかれた〜', 'ちょっとやすむね'] },
+  waiting: { anims: ['knock', 'approval'], label: 'かくにん待ち', lines: ['ねえねえ、かくにんして〜', 'これ、いい？', 'まってるね'] },
+  done:    { anims: ['eat', 'cocoa', 'report'], label: 'おわった', lines: ['おわった〜！ココアでひとやすみ', 'できたよ〜', 'ふぅ、いっぷく…'] },
+  rest:    { anims: ['lieback', 'prone_idle', 'music', 'cocoa', 'break'], label: 'きゅうけい', lines: ['ごろーん', 'つかれた〜', 'ちょっとやすむね'] },
   settled: { anims: ['lieback', 'cocoa'], label: 'ひとだんらく？', lines: ['ひとだんらく…かな？', 'しずかになったね', 'おわったのかな〜'] },
   sleep:   { anims: ['sleep'], label: 'すやすや', lines: ['すぴー…', 'むにゃ…'] },
 };
-// actions Claude can pick via the MCP tools -> animation
+// actions Claude can pick via the MCP tools -> animation (an action with a sprite of its own name needs no entry)
 const ACTION_ANIM = { idle: 'idle', pc: 'pc', focus: 'focus', read: 'read', think: 'think', idea: 'idea', wait: 'wait',
   pray: 'pray', music: 'music', eat: 'eat', smug: 'smug', peace: 'peace', tehepero: 'tehepero', cry: 'cry', scared: 'scared',
   knock: 'knock', wipe: 'wipe', face: 'face', peek: 'peek', cocoa: 'cocoa', lieback: 'lieback', nod: 'nod', sleep: 'sleep',
@@ -102,13 +113,16 @@ const ACTION_ANIM = { idle: 'idle', pc: 'pc', focus: 'focus', read: 'read', thin
 const ACTION_LABEL = { idle: 'のんびり', pc: 'さぎょう中', focus: 'しゅうちゅう', read: 'よんでる', think: 'かんがえ中', idea: 'ひらめいた',
   wait: 'まってる', pray: 'おいのり中', music: 'まってる', eat: 'おわった', smug: 'どやっ', peace: 'やった！', tehepero: 'てへぺろ',
   cry: 'しっぱい…', scared: 'こわい…', knock: 'よんでる', wipe: 'ふきふき', face: 'じー', peek: 'ひょこっ', cocoa: 'ひとやすみ',
-  lieback: 'ごろーん', nod: 'うとうと', sleep: 'すやすや', taunt: 'べー' };
+  lieback: 'ごろーん', nod: 'うとうと', sleep: 'すやすや', taunt: 'べー' };   // the work scenes carry their label in the manifest
+// status dot: red for trouble, the "done" colour for good news
+const ACTION_STATUS = { hide: 'error', scared: 'error', cry: 'error', test_fail: 'error', conflict: 'error', timeout: 'error',
+  oom: 'error', offline: 'error', rate_limit: 'error', denied: 'error', cocoa: 'done', test_pass: 'done', trophy: 'done', report: 'done' };
 // what "idle" looks like at this hour
 function timeIdle() {
   const h = new Date().getHours();
-  if (h >= 5 && h < 10) return ['idle', 'cocoa'];
+  if (h >= 5 && h < 10) return ['idle', 'cocoa', 'morning'];
   if (h >= 18 && h < 22) return ['music', 'read', 'cocoa', 'idle'];
-  if (h >= 22 || h < 5) return ['nod', 'lieback', 'prone_idle'];
+  if (h >= 22 || h < 5) return ['nod', 'lieback', 'prone_idle', 'late_night'];
   return ['idle', 'prone_idle', 'read'];
 }
 const TALK = { idle: 'talk', prone_idle: 'prone_talk' };
@@ -133,7 +147,7 @@ async function setMood(m) {
 }
 
 // ---------- poll the state written by the MCP server (~/.nekobeya/) ----------
-// Only the MCP tools change the state (no hooks). Long silence = she assumes the work
+// The MCP tool and the plugin's hooks change the state. Long silence = she assumes the work
 // settled down: after 5 min the elapsed time stops and she lazes around, after 30 min she falls asleep.
 const QUIET_MS = 5 * 60_000, SLEEP_MS = 30 * 60_000;
 async function poll() {
@@ -145,11 +159,13 @@ async function poll() {
     if (a && age < QUIET_MS) {
       if (a.at !== lastClaude) {
         lastClaude = a.at; mood = 'claude';
-        anim = SPR[ACTION_ANIM[a.action]] ? ACTION_ANIM[a.action] : 'idle';
+        const want = ACTION_ANIM[a.action] ?? a.action;
+        anim = SPR[want] ? want : 'idle';
         await use(anim); t0 = performance.now();
-        $('status').dataset.s = a.action === 'hide' ? 'error' : a.action === 'cocoa' ? 'done' : 'working';
-        $('label').textContent = ACTION_LABEL[a.action] ?? 'みかん';
-        say(a.line || pick(a.phase === 'start' ? LINES._start : a.phase === 'done' ? LINES._done : LINES[anim] ?? LINES.idle));
+        $('status').dataset.s = ACTION_STATUS[a.action] ?? 'working';
+        $('label').textContent = ACTION_LABEL[a.action] ?? SPR[anim].label ?? 'みかん';
+        // a quiet move (the hooks' reading / searching / editing scenes) changes only the pose; her words stay
+        if (!a.quiet || a.line) say(a.line || pick(a.phase === 'start' ? LINES._start : a.phase === 'done' ? LINES._done : LINES[anim] ?? LINES.idle));
       }
       return;
     }

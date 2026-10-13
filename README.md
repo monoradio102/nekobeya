@@ -10,7 +10,7 @@
 
 Claude Code の作業のようすを、ねこみみのドット絵の女の子「みかん」が小窓で見せてくれるプラグインです。
 
-作業を頼むと「どれどれ…」とのぞきこみ、あやしいコードになやみ、テストの結果をいのり、落ちたら泣いて、終わったらごほうびのラーメンをすすります。セリフは Claude 本人が、その場の気持ちやグチをみかんの言葉でしゃべります。小窓には時計、作業の経過時間、進捗も出ます。
+作業を頼むと「どれどれ…」とのぞきこみ、ファイルの山をさがし、赤ペンで直し、テストの試験管をふって、落ちたらアフロになり、終わったらごほうびのラーメンをすすります。読む・さがす・直す・テスト・ビルド・git・デプロイ・承認待ちなど、作業の場面ごとに 38 のしぐさがあります。セリフは Claude 本人が、その場の気持ちやグチをみかんの言葉でしゃべります。小窓には時計、作業の経過時間、進捗も出ます。
 
 Chrome / Edge では小窓を最前面に浮かべられる（ピクチャインピクチャ）ので、ブラウジングしながら横目で作業のようすがわかります。
 
@@ -40,7 +40,7 @@ claude plugin update nekobeya@nekobeya
 - `NEKOBEYA_HOME`: 状態ファイルの置き場所（既定 `~/.nekobeya`）
 - `NEKOBEYA_QUIET=1`: 自動で動く指示を外し、頼んだときだけ動くようにする
 
-Claude がみかんを呼び忘れても（呼ぶ前でも）、プラグインの hook で動きます。話しかけるとすぐのぞきこみ、テストやビルドの実行中はいのって、通ったらピース、落ちたら泣きます。許可の確認待ちではノックし、会話の整理（コンパクト）ではおそうじ、返事が終わったら開いたままの作業を「おわった」にします。セリフは Claude が言ったときが優先です。
+Claude がみかんを呼び忘れても（呼ぶ前でも）、プラグインの hook で動きます。話しかけるとすぐのぞきこみ、ファイルを読むと書類の山をさがし、検索では虫めがね、編集では赤ペン、Web では大きな本をひらきます（このときセリフはそのまま）。テストは試験管をふって、通ったらクラッカー、落ちたらアフロ。ビルド、型チェック、コミット、プッシュ、プル、インストール、デプロイなどにも、それぞれの場面があります。コンフリクト、タイムアウト、メモリ不足、オフライン、レート制限は、エラーの文面から見分けます。許可の確認待ちでは「いい？」の札、質問では「？」の札、会話の整理（コンパクト）では箱につめこみ、返事が終わったら開いたままの作業を「おわった」にします（長い作業ならトロフィー）。セリフは Claude が言ったときが優先です。
 
 作業が5分止まると「ひとだんらく？」とくつろぎ、30分で眠ります。複数の Claude Code セッションで同じ小窓を共有します。
 
@@ -51,8 +51,9 @@ Claude がみかんを呼び忘れても（呼ぶ前でも）、プラグイン�
 ## English
 
 みかん, a small cat-eared pixel-art girl, keeps you company next to Claude Code. She acts out what Claude is doing and
-how it feels about it: 「どれどれ…」 when a task begins, pondering over puzzling code, praying while tests run, crying at
-a failing build, slurping noodles when it is done. The window also shows the clock, the elapsed time and the progress.
+how it feels about it: 「どれどれ…」 when a task begins, digging through files, red-penning an edit, shaking a test tube
+while tests run, a burnt afro when they fail, slurping noodles when it is done - 38 work scenes in all (reading,
+searching, editing, tests, builds, git, deploys, approval prompts, ...). The window also shows the clock, the elapsed time and the progress.
 
 Everything runs on your machine: a small local MCP server and a page on `http://localhost:8767`. Nothing is sent
 anywhere, so Claude can speak freely in her voice.
@@ -82,11 +83,11 @@ claude plugin update nekobeya@nekobeya
 |---|---|
 | `server.mjs` | MCP server (stdio, no dependencies) with one tool, `mikan`: `action`, `line`, optional `task` / `progress` / `phase`. Also serves the window. |
 | `hooks/session-start.mjs` | adds the "when to call her" instructions to each session, so no CLAUDE.md entry is needed |
-| `hooks/events.mjs` | moves her at moments Claude Code knows about, even before or without Claude calling her: peeks in when you send a message, prays while a test or build runs and cheers or cries at the result, knocks on an approval prompt, tidies up on compaction, and closes a task left open when the reply ends. Claude's own call from the last few seconds wins. |
+| `hooks/events.mjs` | moves her at moments Claude Code knows about, even before or without Claude calling her: peeks in when you send a message, shows the kind of step being run (reading files, searching, editing, web research, tests, builds, type checks, git commit / push / pull, installs, deploys) and the result, tells failures apart from the error text (merge conflict, timeout, out of memory, offline, rate limit), holds up a sign on an approval prompt or a question, and closes a task left open when the reply ends. Claude's own call from the last few seconds wins; the work scenes change only her pose, not her words. |
 | `state.mjs` | the shared state in `~/.nekobeya/`, used by the server and the hooks |
 | `commands/open.md` | `/nekobeya:open` opens the window |
 | `buddy/` | the window page and her own line bank (used when a call has no line) |
-| `sprites/` | 28 animations (160 px frames, drawn at 2x) |
+| `sprites/` | 66 animations (160 px frames, drawn at 2x): 28 moods and reactions, 38 work scenes |
 
 State lives in `~/.nekobeya/` (`task.json`, `activity.json`) and is shared by all sessions; whichever session gets the
 port serves the window, and another takes over within 30 seconds if it ends. After 5 quiet minutes she assumes the

@@ -15,11 +15,16 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.NEKOBEYA_PORT) || 8767;
 const URL_ = `http://localhost:${PORT}`;
 const NAME = "みかん";
-const VERSION = "0.6.0";
+const VERSION = "0.7.0";
 
 const ACTIONS = [
   "idle", "pc", "focus", "read", "think", "idea", "wait", "pray", "music", "eat", "smug", "peace", "tehepero",
   "cry", "scared", "knock", "wipe", "face", "peek", "cocoa", "lieback", "nod", "sleep", "taunt",
+  // work scenes, one per kind of step
+  "explore", "grep", "edit", "web", "download", "install", "plan", "subagent", "compact", "build", "test",
+  "test_pass", "test_fail", "debug", "logs", "commit", "push", "conflict", "review", "deploy", "ci_wait", "approval",
+  "question", "denied", "rate_limit", "timeout", "oom", "offline", "gpu_wait", "render", "imagegen", "morning",
+  "late_night", "break", "report", "trophy", "git_pull", "typecheck",
 ];
 
 // ---------- buddy window ----------
@@ -63,7 +68,19 @@ const ACTION_LIST =
   `tehepero=wink and tongue out (a small mistake), cry=crying (a real failure), scared=hiding in fear, ` +
   `knock=knocking on the screen from inside (needs the user), wipe=wiping the screen (fresh start / cleanup), ` +
   `face=face pressed on the screen (curious, peeking in), peek=pops up from below (greeting), cocoa=cocoa break, ` +
-  `lieback=lazing on her back, nod=nodding off with a pillow (late night), sleep=asleep, taunt=teasing with tongue out.`;
+  `lieback=lazing on her back, nod=nodding off with a pillow (late night), sleep=asleep, taunt=teasing with tongue out. ` +
+  `Work scenes (a prop shows the kind of step): explore=digging through papers (looking around files), ` +
+  `grep=magnifying glass over a map (searching), edit=red pen on a manuscript, web=reading a big book (web research), ` +
+  `download=hugging a parcel, install=opening a box of parts, plan=flowchart on a whiteboard, ` +
+  `subagent=commanding tiny clones (delegating), compact=squeezing papers into a box, build=hard hat and wrench, ` +
+  `test=shaking a test tube, test_pass=party cracker, test_fail=burnt afro after an explosion, debug=chasing a bug ` +
+  `with a net, logs=reading a long scroll, commit=pressing a seal stamp, push=throwing a paper plane, ` +
+  `conflict=tug of war, review=glasses and a checklist, deploy=launch button and rocket, ci_wait=waiting at a yellow ` +
+  `light, approval="いい？" sign (asking permission), question="？" sign, denied=shield with an X, rate_limit=waiting ` +
+  `in a queue, timeout=panicking with an hourglass, oom=crushed under boxes (out of memory), offline=broken cable, ` +
+  `gpu_wait=toasting a marshmallow, render=film projector, imagegen=painting canvases, morning=stretching awake, ` +
+  `late_night=nightcap and coffee, break=tea and dango, report=salute (reporting done), trophy=golden trophy (a big ` +
+  `success), git_pull=pulling in parcels on a rope, typecheck=shape-sorter blocks.`;
 
 const TOOLS = [{
   name: "mikan",

@@ -1,5 +1,5 @@
 {
-  "description": "Tells Claude to let みかん act out its work (the instructions a project would otherwise put in CLAUDE.md), and moves her at moments Claude Code knows about: a new message, tests or builds running, approval prompts, the reply being finished",
+  "description": "Tells Claude to let みかん act out its work (the instructions a project would otherwise put in CLAUDE.md), and moves her at moments Claude Code knows about: a new message, the kind of step being run (reading, searching, editing, tests, builds, git), approval prompts, failures, the reply being finished",
   "hooks": {
     "SessionStart": [
       { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.mjs\"" }] },
@@ -10,7 +10,7 @@
       { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
     ],
     "PreToolUse": [
-      { "matcher": "^Bash$",
+      { "matcher": "^(Bash|Read|Glob|LS|Grep|Edit|MultiEdit|Write|NotebookEdit|WebFetch|WebSearch|TodoWrite|TaskCreate|EnterPlanMode|ExitPlanMode|AskUserQuestion)$",
         "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
     ],
     "PostToolUse": [
@@ -18,7 +18,7 @@
         "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
     ],
     "PostToolUseFailure": [
-      { "matcher": "^Bash$",
+      { "matcher": "^(Bash|WebFetch|WebSearch)$",
         "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/events.mjs\"" }] }
     ],
     "PermissionDenied": [

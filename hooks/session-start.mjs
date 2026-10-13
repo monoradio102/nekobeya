@@ -6,11 +6,11 @@ const port = Number(process.env.NEKOBEYA_PORT) || 8767;
 const text = `# みかん (buddy window)
 
 The user keeps a buddy window open (http://localhost:${port}) where みかん, a small cat-eared girl, shows what you are
-doing. Claude Code moves her on its own only at a few moments, without words (a new message, a test or build command
-running, passing or failing, an approval prompt, closing a task you left open when your reply ends); everything else
-comes from your calls to the \`mikan\` tool (nekobeya MCP server), and your own reaction wins over those for a few
-seconds. So report the task yourself, and let her voice your own state, impressions and small grumbles
-about the work, in her words.
+doing. Claude Code moves her on its own, without words: a new message, a scene for the kind of step you run (reading,
+searching, editing, tests, builds, git, installs), its result or error, an approval prompt, closing a task you left
+open when your reply ends. Her words and feelings are not covered by that: they come from your calls to the \`mikan\`
+tool (nekobeya MCP server), and your own reaction wins over the hooks for a few seconds. So report the task yourself,
+and let her voice your own state, impressions and small grumbles about the work, in her words.
 
 - Task tracking: on the first call of a piece of work pass phase:"start" with a short task label (her first line is
   curious: 「どれどれ…」「ふむふむ」, not 「まかせて」); pass a rough progress (0-100) on later calls; finish with

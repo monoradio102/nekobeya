@@ -18,7 +18,8 @@ export async function writeJson(f, v) {
 
 // the task she is keeping an eye on: what, since when, how far. An empty line lets the window pick one from her bank.
 // `by: "hook"` marks moves Claude Code made on its own, so the hooks can tell them from Claude's.
-export async function update({ action, line, task, progress, phase, by }) {
+// `quiet`: a pose change that keeps her current words (the hooks' frequent work scenes: reading, searching, editing).
+export async function update({ action, line, task, progress, phase, by, quiet }) {
   const now = Date.now();
   let cur = await readJson("task.json");
   phase ??= progress != null || task ? (cur && !cur.doneAt ? "update" : "start") : undefined;
@@ -30,6 +31,6 @@ export async function update({ action, line, task, progress, phase, by }) {
     cur.updatedAt = now;   // the window treats a long silence as "probably finished" (the model may forget "done")
     await writeJson("task.json", cur);
   }
-  await writeJson("activity.json", { action, line: String(line ?? "").slice(0, 80), phase: phase ?? null, at: now, by });
+  await writeJson("activity.json", { action, line: String(line ?? "").slice(0, 80), phase: phase ?? null, at: now, by, ...(quiet && { quiet }) });
   return cur;
 }
