@@ -12,18 +12,21 @@ const CHECKS = [
   [/\b(lint|eslint|ruff|flake8|pylint|clippy|go\s+vet)\b/, "review"],
   [/\b(build|make|cargo|gradle|mvn|xcodebuild|swift\s+build|webpack|esbuild)\b/, "build"],
 ];
+// `git <sub>`, also with options before the subcommand (git -C dir log, git -c k=v commit)
+const git = (sub) => new RegExp(`\\bgit\\s+(?:-[Cc]\\s+\\S+\\s+|--?[\\w-]+(?:=\\S+)?\\s+)*(?:${sub})\\b`);
 // other commands: only the scene changes, her words stay (first match wins)
 const SCENES = [
-  [/\bgit\s+commit\b/, "commit"],
-  [/\bgit\s+push\b/, "push"],
-  [/\bgit\s+(pull|fetch|clone)\b/, "git_pull"],
+  [git("commit"), "commit"],
+  [git("push"), "push"],
+  [git("pull|fetch|clone"), "git_pull"],
   [/\b(npm|pnpm|yarn|bun)\s+(i|install|add|ci)\b|\bpip3?\s+install\b|\b(brew|apt|apt-get)\s+install\b|\bcargo\s+(add|install)\b|\buv\s+(add|sync|pip\s+install)\b|\bpoetry\s+(add|install)\b/, "install"],
   [/\bgh\s+(pr\s+checks|run\s+(watch|view))\b/, "ci_wait"],
   [/\b(deploy|vercel|netlify|wrangler|fly\s+deploy|terraform\s+apply|kubectl\s+apply)\b/, "deploy"],
   [/\b(curl|wget|aria2c)\b|\b(colab|huggingface-cli|hf)\s+download\b/, "download"],
   [/\b(ffmpeg|blender|remotion)\b/, "render"],
   [/\b(nvidia-smi|colab\s+(new|exec))\b|\btrain\w*\.py\b/, "gpu_wait"],
-  [/\b(tail|journalctl)\b|\b(docker|kubectl)\s+logs\b|\bgit\s+log\b/, "logs"],
+  [git("log"), "logs"],
+  [/\b(tail|journalctl)\b|\b(docker|kubectl)\s+logs\b/, "logs"],
   [/\b(grep|rg|ag|ack)\b/, "grep"],
   [/\b(find|ls|tree|fd)\b/, "explore"],
   [/\bsleep\s+\d/, "wait"],
@@ -62,7 +65,8 @@ const since = act ? Date.now() - act.at : Infinity;
 const claudeJustSpoke = act && act.by !== "hook" && since < CLAUDE_SPOKE_MS;
 const command = String(ev.tool_input?.command ?? "");
 const check = ev.tool_name === "Bash" ? match(CHECKS, command) : undefined;
-const move = (action, extra) => update({ action, line: "", by: "hook", ...extra });
+// hook moves remember their session, so another session's Stop leaves them alone
+const move = (action, extra) => update({ action, line: "", by: "hook", session: ev.session_id, ...extra });
 // a work scene: no words, never over Claude's own reaction or a fresh hook reaction, and not again if already showing
 const scene = (action) => {
   if (!action || claudeJustSpoke || act?.action === action) return;
@@ -131,6 +135,8 @@ switch (ev.hook_event_name) {
       // a long piece of work earns the trophy
       const long = Date.now() - task.startedAt > 20 * 60_000;
       await move(long ? "trophy" : ["eat", "cocoa", "report"][Math.floor(Math.random() * 3)], { phase: "done" });
-    } else if (act?.by === "hook" && !LASTING.includes(act.action)) await move("idle");   // don't leave a stale scene up
+    } else if (act?.by === "hook" && act.session === ev.session_id && !LASTING.includes(act.action)) {
+      await move("idle");   // don't leave this session's stale scene up
+    }
     break;
 }
