@@ -14,7 +14,7 @@ Claude Code の作業のようすを、ねこみみのドット絵の女の子�
 
 Chrome / Edge では小窓を最前面に浮かべられる（ピクチャインピクチャ）ので、ブラウジングしながら横目で作業のようすがわかります。
 
-すべて手元のパソコンの中で動きます（小さなローカル MCP サーバーと `http://localhost:8767` のページだけ）。会話の内容やセリフがどこかに送られることはありません。
+すべて手元のパソコンの中で動きます（小さなローカル MCP サーバーと `http://localhost:8767` のページだけ）。会話の内容やセリフがどこかに送られることはありません（下の「声」をオンにしたときだけ、セリフを自分で決めた読み上げサービスに送ります）。
 
 ### 入れ方
 
@@ -44,6 +44,16 @@ Claude がみかんを呼び忘れても（呼ぶ前でも）、プラグイン�
 
 作業が5分止まると「ひとだんらく？」とくつろぎ、30分で眠ります。複数の Claude Code セッションで同じ小窓を共有します。
 
+### 声（使うときだけ）
+
+小窓の「せってい」で「声を出す」をオンにすると、みかんがセリフを読み上げます（はじめはオフ）。読み上げは OpenAI 形式の音声合成（`POST …/v1/audio/speech`）なら何でも使えます。自分の PC やサーバーで動かす音声合成でも、OpenAI 本体でもかまいません。
+
+- 「読み上げの URL」に `…/v1` までを入れ、「声（voice）」に声の名前を入れます（空なら `alloy`）。API キーが要るサービスならキーも入れます
+- 読み上げるのは、Claude やフックが言わせたセリフと、なでたときの返事だけです。ひまなときのひとりごとは読みません
+- 読み上げサービスを呼ぶのは小窓のサーバーなので、相手のサービスに CORS の設定は要りません
+- ブラウザは、ページを一度クリックするまで音を出せません。そのあいだは「どこかをクリックすると、声が出るよ」と出ます
+- 設定は `~/.nekobeya/settings.json` に保存されます（API キーもここに入ります）。読み上げた文は残しません
+
 ### ライセンス
 
 コードは MIT です。みかん（絵、セリフ集、キャラクターデザイン）は著作権を保持しており、このプラグインの一部としてそのまま使う場合に限り利用できます（[LICENSE](LICENSE)）。みかんは AI で生成したキャラクターです。
@@ -66,7 +76,8 @@ while tests run, a burnt afro when they fail, slurping noodles when it is done -
 searching, editing, tests, builds, git, deploys, approval prompts, ...). The window also shows the clock, the elapsed time and the progress.
 
 Everything runs on your machine: a small local MCP server and a page on `http://localhost:8767`. Nothing is sent
-anywhere, so Claude can speak freely in her voice.
+anywhere, so Claude can speak freely in her voice. (The one exception is the optional voice below: when you turn it on,
+her lines go to the speech service you set.)
 
 ## Install
 
@@ -105,6 +116,15 @@ work settled down, and after 30 she falls asleep.
 
 Settings (environment variables): `NEKOBEYA_PORT` (default 8767), `NEKOBEYA_HOME` (default `~/.nekobeya`),
 `NEKOBEYA_QUIET=1` (keep the tool but drop the instructions, so she moves only when you ask).
+
+### Voice (optional, off by default)
+
+Open "せってい" in the window and turn on "声を出す" to have her read her lines aloud through any OpenAI-compatible
+text-to-speech endpoint (`POST …/v1/audio/speech`): one you host yourself or OpenAI's. Enter the base URL up to `/v1`,
+a voice name (default `alloy`) and, if the service needs one, an API key. She reads the lines Claude and the hooks give
+her and her answers to pats, not her idle chatter. The window's server calls the endpoint, so it needs no CORS. Browsers
+keep audio muted until you click the page once; a hint shows until then. Settings are kept in
+`~/.nekobeya/settings.json` (the API key too); spoken lines are not stored.
 
 ## License
 

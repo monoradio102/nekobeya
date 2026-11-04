@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "nekobeya",
-      "description": "みかん acts out Claude's work in a small always-visible window (local, nothing leaves your machine)",
+      "description": "みかん acts out Claude's work in a small always-visible window (local; an optional voice sends her lines to a TTS endpoint you choose)",
       "source": "./",
       "category": "fun"
     }

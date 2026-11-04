@@ -46,12 +46,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
 #bar.unknown b{width:30%;animation:slide 1.6s ease-in-out infinite}
 @keyframes slide{0%{margin-left:-30%}100%{margin-left:100%}}
 #pct{font-variant-numeric:tabular-nums;min-width:3em;text-align:right}
-#pip{font:inherit;font-size:11px;color:var(--soft);background:transparent;border:1px solid var(--line);border-radius:999px;padding:3px 12px;cursor:pointer}
-#pip:hover{color:var(--ink)}
+#tools{display:flex;gap:6px}
+#tools button,#panel button{font:inherit;font-size:11px;color:var(--soft);background:transparent;border:1px solid var(--line);border-radius:999px;padding:3px 12px;cursor:pointer}
+#tools button:hover,#panel button:hover{color:var(--ink)}
+#hint{font-size:11px;color:var(--soft)}
+#hint[hidden]{display:none}
+/* settings: a sheet over her, inside #buddy so it moves into the PiP window with everything else */
+#buddy{position:relative}
+#panel{position:absolute;inset:8px;z-index:2;background:var(--bubble);border:1px solid var(--line);border-radius:14px;
+  padding:12px 14px;display:flex;flex-direction:column;gap:9px;font-size:12px;overflow:auto;text-align:left}
+#panel[hidden]{display:none}
+#panel h2{font-size:14px;margin:0}
+#panel label{display:flex;flex-direction:column;gap:3px;color:var(--soft)}
+#panel label.row{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:13px}
+#panel input[type=url],#panel input[type=text],#panel input[type=password]{font:inherit;font-size:12px;padding:5px 8px;
+  border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0}
+#panel input[type=range]{accent-color:var(--bar)}
+#panel small{color:var(--soft);line-height:1.5}
+#vMsg{min-height:1.5em;color:var(--ink)}
+#panel .btns{display:flex;gap:6px;margin-top:auto;justify-content:flex-end}
 @media (max-height:460px){ #buddy{gap:6px;padding-top:8px} #clock{font-size:22px} }
 /* a short window (e.g. the PiP window shrunk vertically) keeps only the line and her; she takes the freed space */
 @media (max-height:380px){
-  #clock,#status,#task,#pip,#notice{display:none}
+  #clock,#status,#task,#tools,#hint,#notice{display:none}
   /* the line shrinks with the window too; she fills the rest, using the full width, and the bubble overlaps
      the empty headroom at the top of her canvas (standing poses leave ~15% of it empty) */
   #buddy{padding:6px 8px 2px;--f:clamp(10px,4.2vh,15px);
@@ -73,8 +90,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
     <div id="taskRow"><span id="taskTitle"></span><span id="elapsed"></span></div>
     <div id="barRow"><div id="bar"><b></b></div><span id="pct"></span></div>
   </div>
-  <button id="pip" hidden>小窓にする</button>
+  <div id="tools"><button id="pip" hidden>小窓にする</button><button id="gear" aria-expanded="false" aria-controls="panel">せってい</button></div>
+  <div id="hint" hidden>どこかをクリックすると、声が出るよ</div>
   <div id="notice">AIで生成したキャラクターです</div>
+  <div id="panel" role="dialog" aria-label="せってい" hidden>
+    <h2>せってい</h2>
+    <label class="row"><input type="checkbox" id="vOn"> 声を出す</label>
+    <label>読み上げの URL（OpenAI 形式、…/v1 まで）<input id="vUrl" type="url" placeholder="https://…/v1" spellcheck="false"></label>
+    <label>声（voice）<input id="vVoice" type="text" placeholder="alloy" spellcheck="false"></label>
+    <label>API キー（いらなければ空）<input id="vKey" type="password" autocomplete="off"></label>
+    <label>はやさ <span><input id="vSpeed" type="range" min="0.5" max="2" step="0.05"> <output id="vSpeedOut"></output></span></label>
+    <small>オンのあいだ、みかんのセリフをこの URL に送って読み上げます。読み上げた文はこの PC にも残しません。</small>
+    <div id="vMsg" aria-live="polite"></div>
+    <div class="btns"><button id="vTry">ためしに話す</button><button id="vClose">とじる</button></div>
+  </div>
 </div>
 <script>
 (async () => {
@@ -150,12 +179,15 @@ async function setMood(m) {
 // The MCP tool and the plugin's hooks change the state. Long silence = she assumes the work
 // settled down: after 5 min the elapsed time stops and she lazes around, after 30 min she falls asleep.
 const QUIET_MS = 5 * 60_000, SLEEP_MS = 30 * 60_000;
+let firstPoll = true;   // the line already showing when the page opens is not read aloud
 async function poll() {
   try {
     const s = await (await fetch('/state', { cache: 'no-store' })).json();
     task = s.task; skew = s.now - Date.now();
+    if (!!s.voice !== voiceOn) { voiceOn = !!s.voice; $('vOn').checked = voiceOn; showHint(); }
     const a = s.activity || null;
     const age = a ? s.now - a.at : Infinity;
+    const quiet = firstPoll; firstPoll = false;
     if (a && age < QUIET_MS) {
       if (a.at !== lastClaude) {
         lastClaude = a.at; mood = 'claude';
@@ -165,7 +197,11 @@ async function poll() {
         $('status').dataset.s = ACTION_STATUS[a.action] ?? 'working';
         $('label').textContent = ACTION_LABEL[a.action] ?? SPR[anim].label ?? 'みかん';
         // a quiet move (the hooks' reading / searching / editing scenes) changes only the pose; her words stay
-        if (!a.quiet || a.line) say(a.line || pick(a.phase === 'start' ? LINES._start : a.phase === 'done' ? LINES._done : LINES[anim] ?? LINES.idle));
+        if (!a.quiet || a.line) {
+          const line = a.line || pick(a.phase === 'start' ? LINES._start : a.phase === 'done' ? LINES._done : LINES[anim] ?? LINES.idle);
+          say(line);
+          if (!quiet) speak(line);
+        }
       }
       return;
     }
@@ -226,10 +262,72 @@ requestAnimationFrame(frame);
 async function pat() {
   for (let i = 0; i < 5; i++) hearts.push({ x: 120 + Math.random() * 80, y: 130 + Math.random() * 40, vy: -1 - Math.random(), life: 1 });
   if (PAT[anim]) { await use(PAT[anim]); over = { anim: PAT[anim], until: performance.now() + 3000 }; }
-  say(pick(mood === 'error' ? ['ありがと…がんばる', 'うぅ、なぐさめて〜'] : ['えへへ', 'なでなで、すき', 'にゃっ', 'もっと〜']));
+  const line = pick(mood === 'error' ? ['ありがと…がんばる', 'うぅ、なぐさめて〜'] : ['えへへ', 'なでなで、すき', 'にゃっ', 'もっと〜']);
+  say(line); speak(line);
 }
 $('stage').addEventListener('click', pat);
 $('stage').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pat(); } });
+
+// ---------- voice (optional): the server reads her lines aloud through the TTS endpoint set in the panel ----------
+// Browsers keep audio muted until the user clicks the page once, so a hint shows until then.
+let voiceOn = false, actx = null, src = null, speakSeq = 0;
+function showHint() { $('hint').hidden = !(voiceOn && actx?.state !== 'running'); }
+function unlockAudio() {
+  actx ??= new AudioContext();
+  if (actx.state !== 'running') actx.resume().then(showHint, showHint);
+}
+const listenForUnlock = d => ['pointerdown', 'keydown'].forEach(t => d.addEventListener(t, unlockAudio));
+listenForUnlock(document);
+async function speak(text, report) {
+  if (!voiceOn || !text) return;
+  const my = ++speakSeq;
+  try {
+    const r = await fetch('/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    if (!r.ok) { report?.(`うまく話せなかった（${(await r.json().catch(() => ({}))).error ?? r.status}）`); return; }
+    const wav = await r.arrayBuffer();
+    if (my !== speakSeq || actx?.state !== 'running') return;   // a newer line came in, or audio is still muted
+    const buf = await actx.decodeAudioData(wav);
+    if (my !== speakSeq) return;
+    try { src?.stop(); } catch {}
+    src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination); src.start();
+    report?.('');
+  } catch (e) { report?.(`うまく話せなかった（${e.message}）`); }
+  finally { showHint(); }
+}
+
+const vMsg = t => { $('vMsg').textContent = t; };
+const showSpeed = () => { $('vSpeedOut').textContent = (+$('vSpeed').value).toFixed(2); };
+async function openPanel() {
+  try {
+    const { voice: v } = await (await fetch('/settings', { cache: 'no-store' })).json();
+    $('vOn').checked = v.enabled; $('vUrl').value = v.url; $('vVoice').value = v.voice; $('vSpeed').value = v.speed;
+    $('vKey').value = ''; $('vKey').placeholder = v.hasKey ? '入っています（変えるときだけ入力）' : '';
+  } catch { vMsg('せっていが読めなかった'); }
+  showSpeed(); vMsg('');
+  $('panel').hidden = false; $('gear').setAttribute('aria-expanded', 'true');
+}
+function closePanel() { $('panel').hidden = true; $('gear').setAttribute('aria-expanded', 'false'); }
+async function saveVoice() {
+  const voice = { enabled: $('vOn').checked, url: $('vUrl').value, voice: $('vVoice').value, speed: +$('vSpeed').value,
+                  ...($('vKey').value && { key: $('vKey').value }) };
+  try {
+    const r = await fetch('/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voice }) });
+    const j = await r.json();
+    if (!r.ok) { vMsg('ほぞんできなかった：' + j.error); return; }
+    voiceOn = j.voice.enabled; showHint();
+    if ($('vKey').value) { $('vKey').value = ''; $('vKey').placeholder = '入っています（変えるときだけ入力）'; }
+    vMsg(voiceOn && !j.voice.url ? 'URL を入れてね' : 'ほぞんしたよ');
+  } catch { vMsg('ほぞんできなかった'); }
+}
+$('gear').addEventListener('click', () => $('panel').hidden ? openPanel() : closePanel());
+$('vClose').addEventListener('click', closePanel);
+$('panel').addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+for (const id of ['vOn', 'vUrl', 'vVoice', 'vKey', 'vSpeed']) $(id).addEventListener('change', saveVoice);
+$('vSpeed').addEventListener('input', showSpeed);
+$('vTry').addEventListener('click', () => {
+  if (!voiceOn) { vMsg('「声を出す」をオンにしてね'); return; }
+  vMsg('…'); speak('こんにちは、みかんだよ。こえ、きこえる？', vMsg);
+});
 
 // ---------- always-on-top window (Chrome / Edge Document Picture-in-Picture) ----------
 if ('documentPictureInPicture' in window) {
@@ -240,6 +338,7 @@ if ('documentPictureInPicture' in window) {
     catch { return; }   // e.g. embedded browsers without a window manager
     [...document.styleSheets].forEach(ss => { try { const st = w.document.createElement('style'); st.textContent = [...ss.cssRules].map(r => r.cssText).join(''); w.document.head.append(st); } catch {} });
     const box = $('buddy'); w.document.body.append(box); doc = w.document; $('pip').hidden = true;
+    listenForUnlock(w.document);
     w.addEventListener('pagehide', () => { document.body.append(box); doc = document; $('pip').hidden = false; });
   });
 }

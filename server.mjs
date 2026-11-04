@@ -3,19 +3,20 @@
 //
 // Every Claude Code session starts its own copy. They share the state in ~/.nekobeya/, and whichever copy gets the
 // port serves the buddy window (the others keep retrying, so the window survives the owner session ending).
-// Nothing leaves this machine: the server only listens on 127.0.0.1.
+// Nothing leaves this machine: the server only listens on 127.0.0.1. The one exception is the optional voice (off by
+// default): when the user turns it on, her lines go to the OpenAI-compatible TTS endpoint they configured.
 import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
-import { readJson, update } from "./state.mjs";
+import { readJson, writeJson, update } from "./state.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.NEKOBEYA_PORT) || 8767;
 const URL_ = `http://localhost:${PORT}`;
 const NAME = "みかん";
-const VERSION = "0.7.1";
+const VERSION = "0.8.0";
 
 const ACTIONS = [
   "idle", "pc", "focus", "read", "think", "idea", "wait", "pray", "music", "eat", "smug", "peace", "tehepero",
@@ -27,6 +28,65 @@ const ACTIONS = [
   "late_night", "break", "report", "trophy", "git_pull", "typecheck",
 ];
 
+// ---------- voice (optional) ----------
+// The buddy page asks this server to read a line aloud; the server calls the TTS endpoint (POST {url}/audio/speech,
+// the OpenAI API shape), so the endpoint needs no CORS. Settings live in ~/.nekobeya/settings.json; the key is write-only.
+const VOICE_DEFAULTS = { enabled: false, url: "", voice: "", model: "tts-1", speed: 1, key: "" };
+const voiceSettings = async () => ({ ...VOICE_DEFAULTS, ...(await readJson("settings.json"))?.voice });
+const publicVoice = ({ key, ...v }) => ({ ...v, hasKey: !!key });
+
+function mergeVoice(cur, v = {}) {
+  const out = { ...cur }, str = (x, n) => String(x).trim().slice(0, n);
+  if (typeof v.enabled === "boolean") out.enabled = v.enabled;
+  if (typeof v.url === "string") {
+    const url = str(v.url, 300);
+    if (url && !/^https?:\/\//.test(url)) throw new Error("url must start with http:// or https://");
+    out.url = url;
+  }
+  if (typeof v.voice === "string") out.voice = str(v.voice, 60);
+  if (typeof v.model === "string") out.model = str(v.model, 60) || VOICE_DEFAULTS.model;
+  if (typeof v.key === "string") out.key = str(v.key, 300);
+  if (v.speed != null && Number.isFinite(+v.speed)) out.speed = Math.min(4, Math.max(0.25, +v.speed));
+  return out;
+}
+
+// a streamed WAV may carry placeholder sizes; set them from what arrived so every decoder accepts it
+function fixWav(b) {
+  if (b.length < 44 || b.toString("ascii", 0, 4) !== "RIFF" || b.toString("ascii", 8, 12) !== "WAVE") return b;
+  b.writeUInt32LE(b.length - 8, 4);
+  for (let p = 12; p + 8 <= b.length;) {
+    const id = b.toString("ascii", p, p + 4), n = b.readUInt32LE(p + 4);
+    if (id === "data") { b.writeUInt32LE(b.length - p - 8, p + 4); break; }
+    p += 8 + n + (n & 1);
+  }
+  return b;
+}
+
+async function speak(text) {
+  const v = await voiceSettings();
+  if (!v.enabled || !v.url) return { status: 409, error: "voice is off" };
+  const r = await fetch(v.url.replace(/\/+$/, "") + "/audio/speech", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(v.key && { Authorization: `Bearer ${v.key}` }) },
+    body: JSON.stringify({ model: v.model, input: text, voice: v.voice || "alloy", response_format: "wav", speed: v.speed }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!r.ok) return { status: 502, error: `TTS answered ${r.status}` };
+  return { status: 200, audio: fixWav(Buffer.from(await r.arrayBuffer())) };
+}
+
+// only the buddy page itself may change settings or make her speak: no other site (Origin), no rebinding (Host),
+// and a JSON body, which a cross-site form cannot send without a CORS preflight this server never answers
+const fromPage = (req) => /^(localhost|127\.0\.0\.1):\d+$/.test(req.headers.host ?? "")
+  && (!req.headers.origin || req.headers.origin === `http://${req.headers.host}`)
+  && /^application\/json\b/.test(req.headers["content-type"] ?? "");
+async function readBody(req, max = 8192) {
+  let s = "";
+  for await (const c of req) { s += c; if (s.length > max) throw new Error("body too large"); }
+  return JSON.parse(s || "{}");
+}
+const json = (res, status, obj) => res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" }).end(JSON.stringify(obj));
+
 // ---------- buddy window ----------
 const TYPES = { ".html": "text/html; charset=utf-8", ".webp": "image/webp", ".json": "application/json" };
 let serving = false;
@@ -34,8 +94,27 @@ const web = http.createServer(async (req, res) => {
   const { pathname } = new URL(req.url, "http://x");
   try {
     if (pathname === "/state") {
-      const body = JSON.stringify({ activity: await readJson("activity.json"), task: await readJson("task.json"), now: Date.now() });
-      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" }).end(body);
+      json(res, 200, { activity: await readJson("activity.json"), task: await readJson("task.json"), voice: (await voiceSettings()).enabled, now: Date.now() });
+      return;
+    }
+    if (pathname === "/settings" && req.method === "GET") { json(res, 200, { voice: publicVoice(await voiceSettings()) }); return; }
+    if ((pathname === "/settings" || pathname === "/speak") && req.method === "POST") {
+      if (!fromPage(req)) { json(res, 403, { error: "forbidden" }); return; }
+      let b;
+      try { b = await readBody(req); } catch (e) { json(res, 400, { error: String(e.message) }); return; }
+      if (pathname === "/settings") {
+        let voice;
+        try { voice = mergeVoice(await voiceSettings(), b.voice); } catch (e) { json(res, 400, { error: e.message }); return; }
+        await writeJson("settings.json", { ...(await readJson("settings.json")), voice });
+        json(res, 200, { voice: publicVoice(voice) });
+        return;
+      }
+      const text = String(b.text ?? "").trim().slice(0, 200);
+      if (!text) { json(res, 400, { error: "text is empty" }); return; }
+      let r;
+      try { r = await speak(text); } catch (e) { r = { status: 502, error: `TTS unreachable (${e.name})` }; }
+      if (r.audio) res.writeHead(200, { "Content-Type": "audio/wav", "Cache-Control": "no-store" }).end(r.audio);
+      else json(res, r.status, { error: r.error });
       return;
     }
     const f = pathname === "/" ? "buddy/index.html"
