@@ -96,6 +96,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
   <div id="panel" role="dialog" aria-label="せってい" hidden>
     <h2>せってい</h2>
     <label class="row"><input type="checkbox" id="vOn"> 声を出す</label>
+    <label class="row"><input type="checkbox" id="vHooks"> 承認待ちやエラーの知らせも読む</label>
     <label>読み上げの URL（OpenAI 形式、…/v1 まで）<input id="vUrl" type="url" placeholder="https://…/v1" spellcheck="false"></label>
     <label>声（voice）<input id="vVoice" type="text" placeholder="alloy" spellcheck="false"></label>
     <label>API キー（いらなければ空）<input id="vKey" type="password" autocomplete="off"></label>
@@ -185,6 +186,7 @@ async function poll() {
     const s = await (await fetch('/state', { cache: 'no-store' })).json();
     task = s.task; skew = s.now - Date.now();
     if (!!s.voice !== voiceOn) { voiceOn = !!s.voice; $('vOn').checked = voiceOn; showHint(); }
+    if (!!s.voiceHooks !== voiceHooks) { voiceHooks = !!s.voiceHooks; $('vHooks').checked = voiceHooks; }
     const a = s.activity || null;
     const age = a ? s.now - a.at : Infinity;
     const quiet = firstPoll; firstPoll = false;
@@ -200,7 +202,8 @@ async function poll() {
         if (!a.quiet || a.line) {
           const line = a.line || pick(a.phase === 'start' ? LINES._start : a.phase === 'done' ? LINES._done : LINES[anim] ?? LINES.idle);
           say(line);
-          if (!quiet && !a.silent) speak(line);
+          // read aloud: Claude's own lines; the hooks' only when the panel says so, and never their start / end moves
+          if (!quiet && !a.silent && (a.by !== 'hook' || voiceHooks)) speak(line);
         }
       }
       return;
@@ -270,7 +273,7 @@ $('stage').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key ===
 
 // ---------- voice (optional): the server reads her lines aloud through the TTS endpoint set in the panel ----------
 // Browsers keep audio muted until the user clicks the page once, so a hint shows until then.
-let voiceOn = false, actx = null, src = null, speakSeq = 0;
+let voiceOn = false, voiceHooks = false, actx = null, src = null, speakSeq = 0;
 function showHint() { $('hint').hidden = !(voiceOn && actx?.state !== 'running'); }
 function unlockAudio() {
   actx ??= new AudioContext();
@@ -300,7 +303,7 @@ const showSpeed = () => { $('vSpeedOut').textContent = (+$('vSpeed').value).toFi
 async function openPanel() {
   try {
     const { voice: v } = await (await fetch('/settings', { cache: 'no-store' })).json();
-    $('vOn').checked = v.enabled; $('vUrl').value = v.url; $('vVoice').value = v.voice; $('vSpeed').value = v.speed;
+    $('vOn').checked = v.enabled; $('vHooks').checked = v.hooks; $('vUrl').value = v.url; $('vVoice').value = v.voice; $('vSpeed').value = v.speed;
     $('vKey').value = ''; $('vKey').placeholder = v.hasKey ? '入っています（変えるときだけ入力）' : '';
   } catch { vMsg('せっていが読めなかった'); }
   showSpeed(); vMsg('');
@@ -308,13 +311,13 @@ async function openPanel() {
 }
 function closePanel() { $('panel').hidden = true; $('gear').setAttribute('aria-expanded', 'false'); }
 async function saveVoice() {
-  const voice = { enabled: $('vOn').checked, url: $('vUrl').value, voice: $('vVoice').value, speed: +$('vSpeed').value,
+  const voice = { enabled: $('vOn').checked, hooks: $('vHooks').checked, url: $('vUrl').value, voice: $('vVoice').value, speed: +$('vSpeed').value,
                   ...($('vKey').value && { key: $('vKey').value }) };
   try {
     const r = await fetch('/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voice }) });
     const j = await r.json();
     if (!r.ok) { vMsg('ほぞんできなかった：' + j.error); return; }
-    voiceOn = j.voice.enabled; showHint();
+    voiceOn = j.voice.enabled; voiceHooks = j.voice.hooks; showHint();
     if ($('vKey').value) { $('vKey').value = ''; $('vKey').placeholder = '入っています（変えるときだけ入力）'; }
     vMsg(voiceOn && !j.voice.url ? 'URL を入れてね' : 'ほぞんしたよ');
   } catch { vMsg('ほぞんできなかった'); }
@@ -322,7 +325,7 @@ async function saveVoice() {
 $('gear').addEventListener('click', () => $('panel').hidden ? openPanel() : closePanel());
 $('vClose').addEventListener('click', closePanel);
 $('panel').addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
-for (const id of ['vOn', 'vUrl', 'vVoice', 'vKey', 'vSpeed']) $(id).addEventListener('change', saveVoice);
+for (const id of ['vOn', 'vHooks', 'vUrl', 'vVoice', 'vKey', 'vSpeed']) $(id).addEventListener('change', saveVoice);
 $('vSpeed').addEventListener('input', showSpeed);
 $('vTry').addEventListener('click', () => {
   if (!voiceOn) { vMsg('「声を出す」をオンにしてね'); return; }

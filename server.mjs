@@ -16,7 +16,7 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.NEKOBEYA_PORT) || 8767;
 const URL_ = `http://localhost:${PORT}`;
 const NAME = "みかん";
-const VERSION = "0.8.1";
+const VERSION = "0.8.2";
 
 const ACTIONS = [
   "idle", "pc", "focus", "read", "think", "idea", "wait", "pray", "music", "eat", "smug", "peace", "tehepero",
@@ -31,13 +31,15 @@ const ACTIONS = [
 // ---------- voice (optional) ----------
 // The buddy page asks this server to read a line aloud; the server calls the TTS endpoint (POST {url}/audio/speech,
 // the OpenAI API shape), so the endpoint needs no CORS. Settings live in ~/.nekobeya/settings.json; the key is write-only.
-const VOICE_DEFAULTS = { enabled: false, url: "", voice: "", model: "tts-1", speed: 1, key: "" };
+// `hooks`: also read the lines the hooks give her (approval prompts, failures, test results); off, only Claude's lines.
+const VOICE_DEFAULTS = { enabled: false, hooks: false, url: "", voice: "", model: "tts-1", speed: 1, key: "" };
 const voiceSettings = async () => ({ ...VOICE_DEFAULTS, ...(await readJson("settings.json"))?.voice });
 const publicVoice = ({ key, ...v }) => ({ ...v, hasKey: !!key });
 
 function mergeVoice(cur, v = {}) {
   const out = { ...cur }, str = (x, n) => String(x).trim().slice(0, n);
   if (typeof v.enabled === "boolean") out.enabled = v.enabled;
+  if (typeof v.hooks === "boolean") out.hooks = v.hooks;
   if (typeof v.url === "string") {
     const url = str(v.url, 300);
     if (url && !/^https?:\/\//.test(url)) throw new Error("url must start with http:// or https://");
@@ -94,7 +96,8 @@ const web = http.createServer(async (req, res) => {
   const { pathname } = new URL(req.url, "http://x");
   try {
     if (pathname === "/state") {
-      json(res, 200, { activity: await readJson("activity.json"), task: await readJson("task.json"), voice: (await voiceSettings()).enabled, now: Date.now() });
+      const v = await voiceSettings();
+      json(res, 200, { activity: await readJson("activity.json"), task: await readJson("task.json"), voice: v.enabled, voiceHooks: v.hooks, now: Date.now() });
       return;
     }
     if (pathname === "/settings" && req.method === "GET") { json(res, 200, { voice: publicVoice(await voiceSettings()) }); return; }
