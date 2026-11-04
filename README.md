@@ -49,7 +49,7 @@ Claude がみかんを呼び忘れても（呼ぶ前でも）、プラグイン�
 小窓の「せってい」で「声を出す」をオンにすると、みかんがセリフを読み上げます（はじめはオフ）。読み上げは OpenAI 形式の音声合成（`POST …/v1/audio/speech`）なら何でも使えます。自分の PC やサーバーで動かす音声合成でも、OpenAI 本体でもかまいません。
 
 - 「読み上げの URL」に `…/v1` までを入れ、「声（voice）」に声の名前を入れます（空なら `alloy`）。API キーが要るサービスならキーも入れます
-- 読み上げるのは、Claude やフックが言わせたセリフと、なでたときの返事だけです。ひまなときのひとりごとは読みません
+- 読み上げるのは、Claude が言わせたセリフ、フックの反応（承認待ち、エラーなど）、なでたときの返事だけです。返事のはじまりと終わりのフックのセリフ、ひまなときのひとりごとは読みません
 - 読み上げサービスを呼ぶのは小窓のサーバーなので、相手のサービスに CORS の設定は要りません
 - ブラウザは、ページを一度クリックするまで音を出せません。そのあいだは「どこかをクリックすると、声が出るよ」と出ます
 - 設定は `~/.nekobeya/settings.json` に保存されます（API キーもここに入ります）。読み上げた文は残しません
@@ -121,8 +121,9 @@ Settings (environment variables): `NEKOBEYA_PORT` (default 8767), `NEKOBEYA_HOME
 
 Open "せってい" in the window and turn on "声を出す" to have her read her lines aloud through any OpenAI-compatible
 text-to-speech endpoint (`POST …/v1/audio/speech`): one you host yourself or OpenAI's. Enter the base URL up to `/v1`,
-a voice name (default `alloy`) and, if the service needs one, an API key. She reads the lines Claude and the hooks give
-her and her answers to pats, not her idle chatter. The window's server calls the endpoint, so it needs no CORS. Browsers
+a voice name (default `alloy`) and, if the service needs one, an API key. She reads Claude's lines, the hooks' reactions
+(approval prompts, failures, ...) and her answers to pats; not the hooks' lines at the start and end of every reply, nor
+her idle chatter. The window's server calls the endpoint, so it needs no CORS. Browsers
 keep audio muted until you click the page once; a hint shows until then. Settings are kept in
 `~/.nekobeya/settings.json` (the API key too); spoken lines are not stored.
 

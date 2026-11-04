@@ -75,14 +75,15 @@ const scene = (action) => {
 };
 
 switch (ev.hook_event_name) {
+  // the moves at the start and end of every reply are not read aloud (silent): heard each time, they would only nag
   case "SessionStart": {   // matcher: startup
     const h = new Date().getHours();
-    await move(h >= 5 && h < 10 ? "morning" : h >= 22 || h < 5 ? "late_night" : "peek");
+    await move(h >= 5 && h < 10 ? "morning" : h >= 22 || h < 5 ? "late_night" : "peek", { silent: true });
     break;
   }
 
   case "UserPromptSubmit":   // react at once; Claude takes a few seconds to read and answer
-    await move("face");
+    await move("face", { silent: true });
     break;
 
   case "PreToolUse":
@@ -134,9 +135,9 @@ switch (ev.hook_event_name) {
     if (mine) {
       // a long piece of work earns the trophy
       const long = Date.now() - task.startedAt > 20 * 60_000;
-      await move(long ? "trophy" : ["eat", "cocoa", "report"][Math.floor(Math.random() * 3)], { phase: "done" });
+      await move(long ? "trophy" : ["eat", "cocoa", "report"][Math.floor(Math.random() * 3)], { phase: "done", silent: true });
     } else if (act?.by === "hook" && act.session === ev.session_id && !LASTING.includes(act.action)) {
-      await move("idle");   // don't leave this session's stale scene up
+      await move("idle", { silent: true });   // don't leave this session's stale scene up
     }
     break;
 }

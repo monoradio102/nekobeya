@@ -16,7 +16,7 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.NEKOBEYA_PORT) || 8767;
 const URL_ = `http://localhost:${PORT}`;
 const NAME = "みかん";
-const VERSION = "0.8.0";
+const VERSION = "0.8.1";
 
 const ACTIONS = [
   "idle", "pc", "focus", "read", "think", "idea", "wait", "pray", "music", "eat", "smug", "peace", "tehepero",

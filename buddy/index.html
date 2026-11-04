@@ -200,7 +200,7 @@ async function poll() {
         if (!a.quiet || a.line) {
           const line = a.line || pick(a.phase === 'start' ? LINES._start : a.phase === 'done' ? LINES._done : LINES[anim] ?? LINES.idle);
           say(line);
-          if (!quiet) speak(line);
+          if (!quiet && !a.silent) speak(line);
         }
       }
       return;
